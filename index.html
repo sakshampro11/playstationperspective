@@ -848,6 +848,22 @@
                         </div>
                     </div>
 
+                    <!-- MARIO GAME CANVAS -->
+                    <div id="mario-app"
+                        style="position: absolute; inset: 0; background: #5c94fc; z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center; font-family: 'Segoe UI', sans-serif; user-select: none;">
+                        <div
+                            style="width: 320px; display: flex; justify-content: space-between; color: #fff; margin-bottom: 5px; font-weight: bold; font-size: 16px; z-index: 2;">
+                            <span style="text-shadow: 1px 1px 0 #000;">MARIO</span>
+                            <span id="mario-score" style="text-shadow: 1px 1px 0 #000;">SCORE: 0</span>
+                        </div>
+                        <canvas id="mario-canvas" width="320" height="200"
+                            style="border: 2px solid #555; background: #5c94fc; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></canvas>
+                        <div id="mario-gameover"
+                            style="position: absolute; color: #fff; font-size: 24px; font-weight: bold; background: rgba(0,0,0,0.6); padding: 10px 20px; border: 2px solid #fff; border-radius: 5px; display: none; text-shadow: 2px 2px 0 #000; z-index: 3; text-align: center;">
+                            GAME OVER<br><span style="font-size:12px;">Press ✕ to restart</span>
+                        </div>
+                    </div>
+
                     <div class="status-bar">
                         <div class="wifi-icon">
                             <div></div>
@@ -945,7 +961,7 @@
 
         const xmbData = [
             { icon: '⚙️', title: 'Settings', items: ['System Update', 'USB Connection', 'Video Settings', 'Photo Settings', 'System Settings', 'Theme Settings', 'Date & Time Settings', 'Power Save Settings', 'Connected Display Settings', 'Sound Settings', 'Security Settings', 'Network Settings'] },
-            { icon: '🎮', title: 'Game', items: ['Snake', 'Tower Stacker', 'Pinball', 'Click Speed', 'Typing Test', 'Simon Says', 'Reaction Test', 'Flappy Bird', 'Brick Breaker'] },
+            { icon: '🎮', title: 'Game', items: ['Snake', 'Tower Stacker', 'Pinball', 'Click Speed', 'Typing Test', 'Simon Says', 'Reaction Test', 'Flappy Bird', 'Brick Breaker', 'Mario'] },
             { icon: '🎵', title: 'Music', items: ['In the End - Linkin Park', 'Rap God - Eminem', 'Numb - Linkin Park', 'Hypnotize - System Of A Down', 'HUMBLE. - Kendrick Lamar', 'Without Me - Eminem'] },
             { icon: '📷', title: 'Camera', items: ['Digital Camera'] },
             { icon: '🌄', title: 'Images', items: ['Memory Stick™', 'Camera Roll', 'Downloads'] },
@@ -1087,6 +1103,13 @@
             // BRICK ENGINE INTERCEPT
             if (window.brickEngineActive) return; // Ignore d-pad in brick breaker
 
+            // MARIO ENGINE INTERCEPT
+            if (window.marioEngineActive) {
+                if (axis === 'X' && dir === -1) window.marioKeys.left = true;
+                if (axis === 'X' && dir === 1) window.marioKeys.right = true;
+                return;
+            }
+
             playSound('nav');
             if (axis === 'X') {
                 catIdx = Math.max(0, Math.min(xmbData.length - 1, catIdx + dir));
@@ -1165,6 +1188,10 @@
                 // Launch Brick Breaker Game
                 document.getElementById('brick-app').style.display = 'flex';
                 initBrickGame();
+            } else if (catIdx === 1 && itemText === 'Mario') {
+                // Launch Mario Game
+                document.getElementById('mario-app').style.display = 'flex';
+                initMarioGame();
             } else if (catIdx === 2) {
                 // Redirect Music to Youtube
                 const parts = itemText.split(' - ');
@@ -1273,6 +1300,13 @@
                 if (window.brickRAF) cancelAnimationFrame(window.brickRAF);
             }
 
+            // Close Mario if running
+            if (document.getElementById('mario-app').style.display === 'flex') {
+                document.getElementById('mario-app').style.display = 'none';
+                window.marioEngineActive = false;
+                if (window.marioRAF) cancelAnimationFrame(window.marioRAF);
+            }
+
             // Close Camera App if running
             const cameraFeed = document.getElementById('camera-feed');
             if (cameraFeed.style.display === 'block') {
@@ -1322,6 +1356,12 @@
             if (window.brickEngineActive) {
                 if (e.key === 'ArrowLeft' && window.brickKeys) window.brickKeys.left = false;
                 if (e.key === 'ArrowRight' && window.brickKeys) window.brickKeys.right = false;
+            }
+
+            // MARIO ENGINE INTERCEPTS (KEY UP)
+            if (window.marioEngineActive) {
+                if (e.key === 'ArrowLeft' && window.marioKeys) window.marioKeys.left = false;
+                if (e.key === 'ArrowRight' && window.marioKeys) window.marioKeys.right = false;
             }
         });
 
@@ -1436,6 +1476,19 @@
                 }
                 if (e.key === 'ArrowLeft' && window.brickKeys) window.brickKeys.left = true;
                 if (e.key === 'ArrowRight' && window.brickKeys) window.brickKeys.right = true;
+                return; // Block default XMB nav
+            }
+
+            // MARIO ENGINE INTERCEPTS
+            if (window.marioEngineActive) {
+                if (e.key === 'Escape') {
+                    closePop(); return;
+                }
+                if (e.key.toLowerCase() === 's' && window.marioAction) {
+                    window.marioAction();
+                }
+                if (e.key === 'ArrowLeft' && window.marioKeys) window.marioKeys.left = true;
+                if (e.key === 'ArrowRight' && window.marioKeys) window.marioKeys.right = true;
                 return; // Block default XMB nav
             }
 

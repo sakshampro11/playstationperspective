@@ -1301,3 +1301,311 @@ function initBrickGame() {
 
     resetGame();
 }
+
+// ==========================================
+// MARIO GAME ENGINE
+// ==========================================
+function initMarioGame() {
+    window.marioEngineActive = true;
+    const canvas = document.getElementById('mario-canvas');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width;
+    const H = canvas.height;
+    const scoreDoc = document.getElementById('mario-score');
+    const gameOverDoc = document.getElementById('mario-gameover');
+    const app = document.getElementById('mario-app');
+
+    let isPlaying = false;
+    let frames = 0;
+    let score = 0;
+    let speed = 2.5;
+    window.marioKeys = { left: false, right: false };
+
+    const GROUND_Y = H - 24;
+    const GRAVITY = 0.4;
+    const JUMP_FORCE = -6.5;
+
+    // Mario character
+    const mario = {
+        x: 60,
+        y: GROUND_Y - 16,
+        w: 14,
+        h: 16,
+        vy: 0,
+        onGround: true,
+        jump: function () {
+            if (this.onGround) {
+                this.vy = JUMP_FORCE;
+                this.onGround = false;
+                playSound('nav');
+            }
+        },
+        update: function () {
+            // Horizontal movement
+            if (window.marioKeys.left) this.x -= 2;
+            if (window.marioKeys.right) this.x += 2;
+            this.x = Math.max(5, Math.min(W - this.w - 5, this.x));
+
+            // Gravity
+            this.vy += GRAVITY;
+            this.y += this.vy;
+            if (this.y >= GROUND_Y - this.h) {
+                this.y = GROUND_Y - this.h;
+                this.vy = 0;
+                this.onGround = true;
+            }
+        },
+        draw: function () {
+            // Hat
+            ctx.fillStyle = '#e00';
+            ctx.fillRect(this.x + 2, this.y, 10, 4);
+            ctx.fillRect(this.x, this.y + 2, 14, 3);
+            // Face
+            ctx.fillStyle = '#fcb';
+            ctx.fillRect(this.x + 2, this.y + 5, 10, 5);
+            // Eyes
+            ctx.fillStyle = '#000';
+            ctx.fillRect(this.x + 4, this.y + 6, 2, 2);
+            // Mustache
+            ctx.fillStyle = '#420';
+            ctx.fillRect(this.x + 3, this.y + 9, 8, 1);
+            // Body
+            ctx.fillStyle = '#e00';
+            ctx.fillRect(this.x + 2, this.y + 10, 10, 3);
+            // Overalls
+            ctx.fillStyle = '#22e';
+            ctx.fillRect(this.x + 3, this.y + 12, 8, 3);
+            // Shoes
+            ctx.fillStyle = '#420';
+            ctx.fillRect(this.x + 2, this.y + 15, 4, 1);
+            ctx.fillRect(this.x + 8, this.y + 15, 4, 1);
+        }
+    };
+
+    // Obstacles & Coins
+    let obstacles = [];
+    let coins = [];
+
+    function spawnObstacle() {
+        const type = Math.random() > 0.5 ? 'pipe' : 'goomba';
+        if (type === 'pipe') {
+            const h = 20 + Math.floor(Math.random() * 20);
+            obstacles.push({ type: 'pipe', x: W + 10, y: GROUND_Y - h, w: 20, h: h });
+        } else {
+            obstacles.push({ type: 'goomba', x: W + 10, y: GROUND_Y - 12, w: 12, h: 12, frame: 0 });
+        }
+    }
+
+    function spawnCoin() {
+        const cy = GROUND_Y - 30 - Math.floor(Math.random() * 40);
+        coins.push({ x: W + 10, y: cy, r: 4, collected: false });
+    }
+
+    function drawGround() {
+        // Sky gradient
+        let grad = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+        grad.addColorStop(0, '#5c94fc');
+        grad.addColorStop(1, '#8cb4fc');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, GROUND_Y);
+
+        // Ground
+        ctx.fillStyle = '#c84c0c';
+        ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+
+        // Ground top bricks
+        ctx.fillStyle = '#e09050';
+        for (let i = 0; i < W; i += 16) {
+            ctx.fillRect(i, GROUND_Y, 15, 3);
+        }
+
+        // Simple clouds
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        let cloudOffset = (frames * 0.3) % (W + 60);
+        ctx.beginPath();
+        ctx.arc(W - cloudOffset, 30, 12, 0, Math.PI * 2);
+        ctx.arc(W - cloudOffset + 15, 28, 14, 0, Math.PI * 2);
+        ctx.arc(W - cloudOffset + 30, 32, 10, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(W - (cloudOffset + 150) % (W + 60), 50, 10, 0, Math.PI * 2);
+        ctx.arc(W - (cloudOffset + 150) % (W + 60) + 12, 48, 12, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    function drawPipe(ob) {
+        // Pipe body
+        ctx.fillStyle = '#0a0';
+        ctx.fillRect(ob.x + 2, ob.y + 6, ob.w - 4, ob.h - 6);
+        // Pipe cap
+        ctx.fillStyle = '#0c0';
+        ctx.fillRect(ob.x, ob.y, ob.w, 8);
+        // Highlights
+        ctx.fillStyle = '#4e4';
+        ctx.fillRect(ob.x + 3, ob.y + 1, 3, 6);
+    }
+
+    function drawGoomba(ob) {
+        // Body
+        ctx.fillStyle = '#a04';
+        ctx.fillRect(ob.x + 1, ob.y + 2, 10, 8);
+        // Head (mushroom shape)
+        ctx.fillStyle = '#c06';
+        ctx.beginPath();
+        ctx.arc(ob.x + 6, ob.y + 3, 6, Math.PI, 0);
+        ctx.fill();
+        // Eyes
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(ob.x + 3, ob.y + 4, 2, 2);
+        ctx.fillRect(ob.x + 7, ob.y + 4, 2, 2);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(ob.x + 4, ob.y + 5, 1, 1);
+        ctx.fillRect(ob.x + 8, ob.y + 5, 1, 1);
+        // Feet
+        ctx.fillStyle = '#420';
+        ctx.fillRect(ob.x, ob.y + 10, 4, 2);
+        ctx.fillRect(ob.x + 8, ob.y + 10, 4, 2);
+    }
+
+    function drawCoin(c) {
+        if (c.collected) return;
+        ctx.fillStyle = '#fc0';
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fa0';
+        ctx.fillRect(c.x - 1, c.y - 2, 2, 4);
+    }
+
+    function checkCollision(ob) {
+        return mario.x < ob.x + ob.w &&
+            mario.x + mario.w > ob.x &&
+            mario.y < ob.y + ob.h &&
+            mario.y + mario.h > ob.y;
+    }
+
+    function resetGame() {
+        score = 0;
+        frames = 0;
+        speed = 2.5;
+        mario.x = 60;
+        mario.y = GROUND_Y - mario.h;
+        mario.vy = 0;
+        mario.onGround = true;
+        obstacles = [];
+        coins = [];
+        window.marioKeys = { left: false, right: false };
+        scoreDoc.innerText = 'SCORE: 0';
+        gameOverDoc.style.display = 'none';
+        ctx.clearRect(0, 0, W, H);
+        drawGround();
+        mario.draw();
+        // Draw start text
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Press ✕ to Start', W / 2, H / 2);
+        ctx.textAlign = 'left';
+    }
+
+    function loop() {
+        if (!isPlaying || !window.marioEngineActive) return;
+
+        ctx.clearRect(0, 0, W, H);
+        drawGround();
+
+        mario.update();
+        mario.draw();
+
+        // Spawn obstacles
+        if (frames % 120 === 0) spawnObstacle();
+        if (frames % 80 === 0) spawnCoin();
+
+        // Update & draw obstacles
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            let ob = obstacles[i];
+            ob.x -= speed;
+
+            if (ob.type === 'pipe') drawPipe(ob);
+            else drawGoomba(ob);
+
+            // Collision with Mario
+            if (checkCollision(ob)) {
+                // Check if Mario can stomp goomba (falling from above)
+                if (ob.type === 'goomba' && mario.vy > 0 && mario.y + mario.h - ob.y < 8) {
+                    obstacles.splice(i, 1);
+                    score += 100;
+                    scoreDoc.innerText = `SCORE: ${score}`;
+                    mario.vy = -4; // Bounce off goomba
+                    playSound('select');
+                    continue;
+                }
+                endGame();
+                return;
+            }
+
+            // Remove off-screen
+            if (ob.x + ob.w < -10) {
+                obstacles.splice(i, 1);
+                score += 10;
+                scoreDoc.innerText = `SCORE: ${score}`;
+            }
+        }
+
+        // Update & draw coins
+        for (let i = coins.length - 1; i >= 0; i--) {
+            let c = coins[i];
+            c.x -= speed;
+            drawCoin(c);
+
+            // Coin collection
+            let dx = mario.x + mario.w / 2 - c.x;
+            let dy = mario.y + mario.h / 2 - c.y;
+            if (Math.sqrt(dx * dx + dy * dy) < c.r + 8) {
+                coins.splice(i, 1);
+                score += 50;
+                scoreDoc.innerText = `SCORE: ${score}`;
+                playSound('select');
+                continue;
+            }
+
+            if (c.x < -10) coins.splice(i, 1);
+        }
+
+        // Increase speed over time
+        if (frames % 500 === 0 && speed < 5) speed += 0.3;
+
+        frames++;
+        window.marioRAF = requestAnimationFrame(loop);
+    }
+
+    function startGame() {
+        if (isPlaying) return;
+        resetGame();
+        isPlaying = true;
+        loop();
+    }
+
+    function endGame() {
+        if (!isPlaying) return;
+        isPlaying = false;
+        playSound('cancel');
+        gameOverDoc.style.display = 'block';
+    }
+
+    window.marioAction = function () {
+        if (!isPlaying) {
+            startGame();
+        }
+        mario.jump();
+    };
+
+    // Click to jump
+    app.onclick = function (e) {
+        e.stopPropagation();
+        window.marioAction();
+    };
+
+    resetGame();
+}
