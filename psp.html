@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>BVCOE - 3D PSP Pro Sim</title>
+    <!-- 
+       Boot sequence files have been extracted.
+       Uncomment the css line to enable the boot sequence styling.
+    -->
+    <link rel="stylesheet" href="boot.css">
+
+    <style>
+        body {
+            background: #020205;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            perspective: 3000px;
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+        }
+
+        /* === XMB Dynamic Background === */
+        :root {
+            --xmb-color-primary: rgba(80, 140, 255, 0.35);
+            --xmb-color-secondary: rgba(160, 90, 240, 0.25);
+            --xmb-color-accent: rgba(255, 255, 255, 0.08);
+        }
+
+        .ambient-bg {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            overflow: hidden;
+            background: radial-gradient(ellipse at 50% 80%, #0a0912 0%, #020205 100%);
+        }
+
+        /* --- Volumetric Glow Ribbons --- */
+        .ribbon-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 150vw;
+            height: 40vh;
+            transform-origin: center;
+            mix-blend-mode: screen;
+            filter: blur(90px);
+            will-change: transform;
+            border-radius: 50%;
+        }
+
+        .ribbon-1 {
+            background: radial-gradient(ellipse at center, var(--xmb-color-primary) 0%, transparent 60%);
+            animation: flow-1 18s ease-in-out infinite alternate;
+        }
+
+        .ribbon-2 {
+            background: radial-gradient(ellipse at center, var(--xmb-color-secondary) 0%, transparent 70%);
+            animation: flow-2 24s ease-in-out infinite alternate-reverse;
+        }
+
+        .ribbon-3 {
+            background: radial-gradient(ellipse at center, var(--xmb-color-accent) 0%, transparent 50%);
+            height: 20vh;
+            filter: blur(60px);
+            animation: flow-3 20s ease-in-out infinite alternate;
+        }
+
+        /* Complex keyframes simulating a twisting 3D ribbon */
+        @keyframes flow-1 {
+            0% {
+                transform: translate(-50%, -50%) rotate(-5deg) scaleY(1);
+            }
+
+            33% {
+                transform: translate(-45%, -40%) rotate(2deg) scaleY(1.3);
+            }
+
+            66% {
+                transform: translate(-55%, -55%) rotate(-3deg) scaleY(1.1);
+            }
+
+            100% {
+                transform: translate(-55%, -60%) rotate(-8deg) scaleY(0.8);
+            }
+        }
+
+        @keyframes flow-2 {
+            0% {
+                transform: translate(-50%, -50%) rotate(5deg) scaleY(0.9);
+            }
+
+            33% {
+                transform: translate(-55%, -60%) rotate(-3deg) scaleY(1.2);
+            }
+
+            66% {
+                transform: translate(-48%, -45%) rotate(6deg) scaleY(0.95);
+            }
+
+            100% {
+                transform: translate(-45%, -40%) rotate(8deg) scaleY(1);
+            }
+        }
+
+        @keyframes flow-3 {
+            0% {
+                transform: translate(-50%, -50%) rotate(-2deg);
+            }
+
+            50% {
+                transform: translate(-48%, -47%) rotate(1deg) scaleY(1.2);
+            }
+
+            100% {
+                transform: translate(-50%, -45%) rotate(4deg);
+            }
+        }
+
+        /* --- Subtle SVG wire layers (depth texture underneath) --- */
+        .wave-layer {
+            position: absolute;
+            width: 200vw;
+            height: 100vh;
+            top: 0;
+            left: 0;
+            will-change: transform;
+            opacity: 0.5;
+        }
+
+        .wave-path {
+            fill: none;
+            stroke-linecap: round;
+            vector-effect: non-scaling-stroke;
+        }
+
+        .layer-1 {
+            animation: slide-left 22s linear infinite;
+        }
+
+        .layer-1 .wave-path {
+            stroke: rgba(255, 255, 255, 0.08);
+            stroke-width: 1.5px;
+        }
+
+        .layer-2 {
+            animation: slide-right 32s linear infinite;
+            transform: scaleY(1.3) translateY(5%);
+        }
+
+        .layer-2 .wave-path {
+            stroke: rgba(140, 190, 255, 0.08);
+            stroke-width: 2px;
+        }
+
+        .layer-3 {
+            animation: slide-left 18s linear infinite;
+            transform: scaleY(0.9) translateY(-8%);
+        }
+
+        .layer-3 .wave-path {
+            stroke: rgba(160, 100, 240, 0.06);
+            stroke-width: 2px;
+        }
+
+        @keyframes slide-left {
+            0% {
+                transform: translateX(0);
+            }
+
+            100% {
+                transform: translateX(-100vw);
+            }
+        }
+
+        @keyframes slide-right {
+            0% {
+                transform: translateX(-100vw) scaleY(1.3) translateY(5%);
+            }
+
+            100% {
+                transform: translateX(0) scaleY(1.3) translateY(5%);
+            }
+        }
+
+        /* --- Noise overlay for retro screen texture --- */
+        .noise-overlay {
+            position: absolute;
+            inset: 0;
+            opacity: 0.03;
+            pointer-events: none;
+            mix-blend-mode: overlay;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+            background-repeat: repeat;
+            background-size: 128px 128px;
+        }
+
+        /* 3D Scene Wrapper */
+        .scene {
+            width: 880px;
+            height: 380px;
+            position: relative;
+            transform-style: preserve-3d;
+            cursor: grab;
+            transform: rotateY(-20deg) rotateX(10deg);
+        }
+
+        .psp-body {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+        }
+
+        .side {
+            position: absolute;
+            background: #111;
+            box-sizing: border-box;
+        }
+
+        /* ERGONOMIC SHELL SHAPE */
+        .face {
+            width: 880px;
+            height: 380px;
+            border-radius: 120px / 190px;
+            border: 2px solid #1a1a1a;
+        }
+
+        .front {
+            background: linear-gradient(180deg, #333 0%, #111 5%, #0a0a0a 50%, #000 100%);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 60px;
+            transform: translateZ(18px);
+            /* Half-girth */
+        }
+
+        /* FEATURE 2: DYNAMIC GLOSS LAYER */
+        .screen-gloss {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, 0.12) 50%, rgba(255, 255, 255, 0) 70%);
+            z-index: 20;
+            pointer-events: none;
+            mix-blend-mode: overlay;
+            background-size: 200% 200%;
+            background-position: 0% 0%;
+        }
+
+        /* MATTE SCREEN WITH XMB DYNAMIC BACKGROUND */
+        .screen {
+            flex: 1;
+            height: 280px;
+            margin: 0 10px;
+            border-radius: 5px;
+            border: 10px solid #000;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: inset 0 0 50px #000;
+            /* Default background, handled by JS by month */
+            background: radial-gradient(circle at 50% 150%, #004b75, #001220);
+            transition: background 2s;
+        }
+
+        .xmb-wave {
+            position: absolute;
+            bottom: -30px;
+            left: -100%;
+            width: 300%;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 50%;
+            filter: blur(15px);
+            animation: waveFlow 15s infinite linear, waveBreathe 5s infinite ease-in-out alternate;
+        }
+
+        @keyframes waveFlow {
+            0% {
+                transform: translateX(0);
+            }
+
+            100% {
+                transform: translateX(-33%);
+            }
+        }
+
+        @keyframes waveBreathe {
+            0% {
+                height: 120px;
+                filter: blur(15px);
+            }
+
+            100% {
+                height: 140px;
+                filter: blur(20px);
+                opacity: 0.8;
+            }
+        }
+
+        /* REQUIRED FONT PROPERTIES (Experiment 3) */
+        .capital-font {
+            color: #ffcc00;
+            font-weight: 900;
+            font-size: 48px;
+            letter-spacing: 5px;
+            text-shadow: 0 0 20px rgba(255, 204, 0, 0.4);
+            text-align: center;
+        }
+
+        /* XMB UI ELEMENTS & STATUS BAR */
+        .status-bar {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 21;
+        }
+
+        /* Network Staircase Icon CSS */
+        .wifi-icon {
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 12px;
+            opacity: 0.8;
+        }
+
+        .wifi-icon div {
+            width: 3px;
+            background: #fff;
+            border-radius: 1px;
+        }
+
+        .wifi-icon div:nth-child(1) {
+            height: 4px;
+        }
+
+        .wifi-icon div:nth-child(2) {
+            height: 8px;
+        }
+
+        .wifi-icon div:nth-child(3) {
+            height: 12px;
+        }
+
+        /* Battery Icon CSS */
+        .battery-icon {
+            width: 20px;
+            height: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            border-radius: 2px;
+            position: relative;
+            padding: 1px;
+            display: flex;
+            box-sizing: border-box;
+        }
+
+        .battery-icon::after {
+            content: '';
+            position: absolute;
+            right: -4px;
+            top: 2px;
+            width: 2px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 0 1px 1px 0;
+        }
+
+        .battery-fill {
+            width: 100%;
+            height: 100%;
+            background: #4cd964;
+            /* Classic battery green */
+            border-radius: 1px;
+        }
+
+        .xmb-title {
+            position: absolute;
+            top: 15px;
+            left: 25px;
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+            z-index: 21;
+        }
+
+        .xmb-time {
+            color: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            opacity: 0.8;
+        }
+
+        .xmb-view {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .xmb-categories {
+            position: absolute;
+            top: 80px;
+            left: 0;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+            padding-left: 50%;
+            /* Center start point horizontally */
+            transform: translateX(-30px);
+            /* Center based on 60px half-width */
+        }
+
+        .xmb-category {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            opacity: 0.5;
+            transform: scale(0.8);
+            transition: 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+            filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.5));
+            z-index: 15;
+        }
+
+        .xmb-category.active {
+            opacity: 1;
+            transform: scale(1.3);
+            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.8));
+            z-index: 20;
+        }
+
+        .xmb-items {
+            position: absolute;
+            top: 150px;
+            left: 50%;
+            /* Center horizontally */
+            transform: translateX(-50%);
+            /* Align directly under active category icon */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* Center items logically so active expands outwards */
+            transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+            width: 300px;
+            text-align: center;
+        }
+
+        .xmb-item {
+            height: 30px;
+            line-height: 30px;
+            padding: 0 20px;
+            color: #d0d0d0;
+            font-size: 14px;
+            font-weight: bold;
+            white-space: nowrap;
+            opacity: 0.4;
+            transition: 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+            text-shadow: 1px 1px 2px #000;
+            border-radius: 15px;
+            margin-bottom: 2px;
+        }
+
+        .xmb-item.active {
+            opacity: 1;
+            color: #fff;
+            font-size: 16px;
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.2) 0%, transparent 80%);
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+            box-shadow: 0px 2px 0 rgba(255, 255, 255, 0.5);
+            /* Bottom underline instead of left border since we are centered */
+        }
+
+        /* HARDWARE KEYS */
+        .key {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(145deg, #222, #050505);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #444;
+            font-size: 22px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #000;
+            border: 1px solid #111;
+            transition: 0.1s;
+        }
+
+        .key:active,
+        .key.pressed {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #000, inset 0 0 10px rgba(255, 255, 255, 0.2);
+            background: linear-gradient(145deg, #333, #050505);
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        /* BACK FACE */
+        .back {
+            background: #080808;
+            transform: rotateY(180deg) translateZ(18px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .umd-ring {
+            width: 250px;
+            height: 250px;
+            border: 10px solid #444;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.8), inset 0 0 10px rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+
+        .umd-ring-light {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, transparent 60%, rgba(255, 255, 255, 0.9) 100%);
+            -webkit-mask: radial-gradient(closest-side, transparent 124px, black 125px);
+            mask: radial-gradient(closest-side, transparent 124px, black 125px);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .umd-ring-light.animating {
+            animation: spinLight 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        .umd-ring-glow {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.7);
+            -webkit-mask: radial-gradient(closest-side, transparent 124px, black 125px);
+            mask: radial-gradient(closest-side, transparent 124px, black 125px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1;
+        }
+
+        .umd-ring-glow.stay-on {
+            opacity: 1;
+        }
+
+        @keyframes spinLight {
+            0% {
+                transform: rotate(0deg);
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 1;
+            }
+
+            90% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: rotate(720deg);
+                opacity: 1;
+            }
+        }
+
+        /* STACKED SHELL LAYERS (Volumetric 3D body) */
+        .shell-layer {
+            position: absolute;
+            width: 880px;
+            height: 380px;
+            border-radius: 120px / 190px;
+            box-sizing: border-box;
+            border: 1px solid rgba(30, 30, 30, 0.6);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="ambient-bg">
+        <!-- Volumetric glow ribbons -->
+        <div class="ribbon-glow ribbon-1"></div>
+        <div class="ribbon-glow ribbon-2"></div>
+        <div class="ribbon-glow ribbon-3"></div>
+
+        <!-- Subtle SVG wire layers for depth texture -->
+        <svg class="wave-layer layer-1" viewBox="0 0 200 100" preserveAspectRatio="none">
+            <path class="wave-path" d="M 0 50 Q 25 15, 50 50 T 100 50 T 150 50 T 200 50 T 250 50 T 300 50" />
+        </svg>
+        <svg class="wave-layer layer-2" viewBox="0 0 200 100" preserveAspectRatio="none">
+            <path class="wave-path" d="M 0 50 Q 25 85, 50 50 T 100 50 T 150 50 T 200 50 T 250 50 T 300 50" />
+        </svg>
+        <svg class="wave-layer layer-3" viewBox="0 0 200 100" preserveAspectRatio="none">
+            <path class="wave-path" d="M 0 55 Q 30 20, 60 55 T 120 55 T 180 55 T 240 55 T 300 55" />
+        </svg>
+
+        <!-- Retro noise overlay -->
+        <div class="noise-overlay"></div>
+    </div>
+
+    <div class="scene" id="scene">
+        <div class="psp-body">
+            <div class="side face front">
+                <div class="btn-grid">
+                    <div></div>
+                    <div class="key" id="btn-up" onclick="handleNav('Y', -1)">▲</div>
+                    <div></div>
+                    <div class="key" id="btn-left" onclick="handleNav('X', -1)">◀</div>
+                    <div></div>
+                    <div class="key" id="btn-right" onclick="handleNav('X', 1)">▶</div>
+                    <div></div>
+                    <div class="key" id="btn-down" onclick="handleNav('Y', 1)">▼</div>
+                    <div></div>
+                </div>
+
+                <div class="screen" id="psp-screen">
+                    <!-- 
+                       Boot sequence has been extracted to boot.css and boot.js.
+                       Uncomment the divs below to enable the boot sequence.
+                    -->
+
+                    <div class="boot-overlay" style="display: none;">
+                        <div class="boot-line"></div>
+                    </div>
+
+                    <div class="sony-boot" id="sony-boot" style="display: none;">
+                        <div class="sony-text" id="sony-text">Sony Computer Entertainment</div>
+                        <img src="psp-vector-logo.png" class="ps-logo-boot" id="ps-logo-boot" alt="PSP">
+                    </div>
+
+
+                    <div class="screen-gloss" id="gloss"></div>
+                    <div class="xmb-wave"></div>
+
+                    <div id="popup"
+                        style="position:absolute; inset:0; background:rgba(0,0,0,0.95); display:none; flex-direction:column; justify-content:center; align-items:center; z-index:50;">
+                        <div id="cap-display" class="capital-font">---</div>
+                        <p style="color:#666; font-size:10px; margin-top:20px; font-weight:bold;">PRESS (◯) TO DISMISS
+                        </p>
+                    </div>
+
+                    <div class="xmb-title" id="xmb-title">Settings</div>
+
+                    <video id="camera-feed" autoplay playsinline
+                        style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 60; display: none;"></video>
+
+                    <!-- SNAKE GAME CANVAS -->
+                    <div id="snake-app"
+                        style="position: absolute; inset: 0; background: #111; z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center; font-family: 'Courier New', monospace;">
+                        <div
+                            style="width: 320px; display: flex; justify-content: space-between; color: #0f0; margin-bottom: 5px; font-weight: bold;">
+                            <span>SNAKE</span>
+                            <span id="snake-score">SCORE: 0</span>
+                        </div>
+                        <canvas id="snake-canvas" width="320" height="160"
+                            style="border: 2px solid #555; background: #000; box-shadow: 0 0 10px rgba(0,255,0,0.2);"></canvas>
+                        <div id="snake-gameover"
+                            style="position: absolute; color: #f00; font-size: 24px; font-weight: bold; background: rgba(0,0,0,0.8); padding: 10px 20px; border: 2px solid #f00; border-radius: 5px; display: none; text-shadow: 0 0 5px #f00;">
+                            GAME OVER</div>
+                    </div>
+
+                    <!-- TOWER STACKER CANVAS -->
+                    <div id="stack-app"
+                        style="position: absolute; inset: 0; background: #111; z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center; font-family: 'Courier New', monospace;">
+                        <div
+                            style="width: 320px; display: flex; justify-content: space-between; color: #0df; margin-bottom: 5px; font-weight: bold;">
+                            <span>STACKER</span>
+                            <span id="stack-score">SCORE: 0</span>
+                        </div>
+                        <canvas id="stack-canvas" width="320" height="200"
+                            style="border: 2px solid #555; background: #000; box-shadow: 0 0 10px rgba(0,255,255,0.2);"></canvas>
+                        <div id="stack-gameover"
+                            style="position: absolute; color: #f00; font-size: 24px; font-weight: bold; background: rgba(0,0,0,0.8); padding: 10px 20px; border: 2px solid #f00; border-radius: 5px; display: none; text-shadow: 0 0 5px #f00;">
+                            GAME OVER</div>
+                    </div>
+
+                    <!-- PINBALL GAME CANVAS -->
+                    <div id="pinball-app"
+                        style="position: absolute; inset: 0; background: #111; z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center; font-family: 'Courier New', monospace;">
+                        <div
+                            style="width: 320px; display: flex; justify-content: space-between; color: #f0f; margin-bottom: 5px; font-weight: bold;">
+                            <span>PINBALL</span>
+                            <span id="pinball-score">SCORE: 0</span>
+                        </div>
+                        <canvas id="pinball-canvas" width="320" height="200"
+                            style="border: 2px solid #555; background: #000; box-shadow: 0 0 10px rgba(255,0,255,0.2);"></canvas>
+                        <div id="pinball-gameover"
+                            style="position: absolute; color: #f00; font-size: 24px; font-weight: bold; background: rgba(0,0,0,0.8); padding: 10px 20px; border: 2px solid #f00; border-radius: 5px; display: none; text-shadow: 0 0 5px #f00;">
+                            GAME OVER</div>
+                    </div>
+
+                    <!-- CLICK SPEED CANVAS -->
+                    <div id="click-app"
+                        style="position: absolute; inset: 0; background: #111; z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center; font-family: 'Courier New', monospace; cursor: pointer; user-select: none;">
+                        <div
+                            style="width: 320px; display: flex; justify-content: space-between; color: #ff0; margin-bottom: 20px; font-weight: bold; font-size: 18px;">
+                            <span>CLICK SPEED</span>
+                            <span id="click-time">TIME: 10s</span>
+                        </div>
+                        <div id="click-score-display"
+                            style="font-size: 64px; color: #fff; text-shadow: 0 0 20px #ff0; font-weight: bold; transition: transform 0.05s;">
+                            0
+                        </div>
+                        <div id="click-instruction"
+                            style="margin-top: 20px; color: #888; font-size: 14px; text-align: center;">
+                            Click wildly! <br>(Press X or Click to begin)
+                        </div>
+                    </div>
+
+                    <!-- TYPING TEST CANVAS -->
+                    <div id="typing-app"
+                        style="position: absolute; inset: 0; background: #111; z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center; font-family: 'Courier New', monospace; user-select: none;">
+                        <div
+                            style="width: 320px; display: flex; justify-content: space-between; color: #0cf; margin-bottom: 20px; font-weight: bold; font-size: 18px;">
+                            <span>TYPING TEST</span>
+                            <span id="typing-time">TIME: 60s</span>
+                        </div>
+                        <div
+                            style="width: 300px; height: 60px; overflow: hidden; position: relative; background: #000; border: 2px solid #555; box-shadow: 0 0 10px rgba(0,255,255,0.2); border-radius: 5px; display: flex; align-items: center; padding: 0 10px;">
+                            <div id="typing-track"
+                                style="position: absolute; left: 140px; font-size: 20px; color: #888; white-space: nowrap; transition: transform 0.05s linear;">
+                                <span id="typing-done" style="color: #0cf;"></span><span id="typing-cursor"
+                                    style="background: rgba(0,255,255,0.3); border-bottom: 2px solid #0cf;"></span><span
+                                    id="typing-todo"></span>
+                            </div>
+                        </div>
+                        <div id="typing-score-display"
+                            style="margin-top: 15px; font-size: 24px; color: #fff; text-shadow: 0 0 10px #0cf; font-weight: bold;">
+                            WPM: 0
+                        </div>
+                        <div id="typing-instruction"
+                            style="margin-top: 10px; color: #888; font-size: 12px; text-align: center;">
+                            Type the words! <br>(Press ✕ to begin, Esc to quit)
+                        </div>
+                    </div>
+
+                    <!-- SIMON SAYS CANVAS -->
+                    <div id="simon-app"
+                        style="position: absolute; inset: 0; background: #111; z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center; font-family: 'Segoe UI', sans-serif; user-select: none;">
+                        <div
+                            style="width: 320px; display: flex; justify-content: space-between; color: #aaa; margin-bottom: 20px; font-weight: bold; font-size: 16px;">
+                            <span>SIMON SAYS</span>
+                            <span id="simon-score">SCORE: 0</span>
+                        </div>
+                        <div
+                            style="position: relative; width: 150px; height: 150px; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 10px;">
+                            <div id="simon-btn-triangle"
+                                style="background: rgba(136,170,255,0.2); border: 2px solid #8af; border-radius: 10px 0 0 0; display: flex; align-items: center; justify-content: center; color: #8af; font-size: 24px; transition: background 0.1s;">
+                                △</div>
+                            <div id="simon-btn-circle"
+                                style="background: rgba(255,136,136,0.2); border: 2px solid #f88; border-radius: 0 10px 0 0; display: flex; align-items: center; justify-content: center; color: #f88; font-size: 24px; transition: background 0.1s;">
+                                ◯</div>
+                            <div id="simon-btn-square"
+                                style="background: rgba(255,136,255,0.2); border: 2px solid #f8a; border-radius: 0 0 0 10px; display: flex; align-items: center; justify-content: center; color: #f8a; font-size: 24px; transition: background 0.1s;">
+                                ▢</div>
+                            <div id="simon-btn-cross"
+                                style="background: rgba(136,255,204,0.2); border: 2px solid #8fc; border-radius: 0 0 10px 0; display: flex; align-items: center; justify-content: center; color: #8fc; font-size: 24px; transition: background 0.1s;">
+                                ✕</div>
+                        </div>
+                        <div id="simon-instruction"
+                            style="margin-top: 25px; color: #888; font-size: 12px; text-align: center;">
+                            Watch the pattern! <br>(Press ✕ to start)
+                        </div>
+                    </div>
+
+                    <!-- REACTION TEST CANVAS -->
+                    <div id="react-app"
+                        style="position: absolute; inset: 0; background: #a22; z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center; font-family: 'Segoe UI', sans-serif; user-select: none; transition: background-color 0.1s;">
+                        <div style="font-size: 48px; color: #fff; font-weight: bold; text-shadow: 0 0 10px rgba(0,0,0,0.5);"
+                            id="react-icon">
+                            ⏳
+                        </div>
+                        <div id="react-time"
+                            style="margin-top: 10px; font-size: 32px; color: #fff; font-weight: bold; text-shadow: 0 0 10px rgba(0,0,0,0.5);">
+                            Wait for Green...
+                        </div>
+                        <div id="react-instruction"
+                            style="margin-top: 20px; color: rgba(255,255,255,0.8); font-size: 14px; text-align: center;">
+                            Press ✕ as fast as possible!
+                        </div>
+                    </div>
+
+                    <!-- FLAPPY BIRD CANVAS -->
+                    <div id="flappy-app"
+                        style="position: absolute; inset: 0; background: #6af; z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center; font-family: 'Segoe UI', sans-serif; user-select: none;">
+                        <div
+                            style="width: 320px; display: flex; justify-content: space-between; color: #fff; margin-bottom: 5px; font-weight: bold; font-size: 16px; z-index: 2;">
+                            <span style="text-shadow: 1px 1px 0 #000;">FLAPPY</span>
+                            <span id="flappy-score" style="text-shadow: 1px 1px 0 #000;">SCORE: 0</span>
+                        </div>
+                        <canvas id="flappy-canvas" width="320" height="200"
+                            style="border: 2px solid #555; background: #8df; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></canvas>
+                        <div id="flappy-gameover"
+                            style="position: absolute; color: #fff; font-size: 24px; font-weight: bold; background: rgba(0,0,0,0.6); padding: 10px 20px; border: 2px solid #fff; border-radius: 5px; display: none; text-shadow: 2px 2px 0 #000; z-index: 3; text-align: center;">
+                            GAME OVER<br><span style="font-size:12px;">Press ✕ to restart</span>
+                        </div>
+                        <div id="flappy-instruction"
+                            style="position: absolute; color: #fff; font-size: 14px; font-weight: bold; text-shadow: 1px 1px 0 #000; z-index: 3;">
+                            Press ✕ to Flap
+                        </div>
+                    </div>
+
+                    <!-- BRICK BREAKER CANVAS -->
+                    <div id="brick-app"
+                        style="position: absolute; inset: 0; background: #111; z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center; font-family: 'Segoe UI', sans-serif; user-select: none;">
+                        <div
+                            style="width: 320px; display: flex; justify-content: space-between; color: #f82; margin-bottom: 5px; font-weight: bold; font-size: 16px;">
+                            <span>BRICK BREAKER</span>
+                            <span id="brick-score">SCORE: 0</span>
+                        </div>
+                        <canvas id="brick-canvas" width="320" height="200"
+                            style="border: 2px solid #555; background: #000; box-shadow: 0 0 10px rgba(255,100,0,0.3);"></canvas>
+                        <div id="brick-gameover"
+                            style="position: absolute; color: #f22; font-size: 24px; font-weight: bold; background: rgba(0,0,0,0.8); padding: 10px 20px; border: 2px solid #f22; border-radius: 5px; display: none; text-shadow: 0 0 5px #f22; text-align: center;">
+                            GAME OVER<br><span style="font-size:12px; color:#fff;">Press ✕ to restart</span>
+                        </div>
+                    </div>
+
+                    <div class="status-bar">
+                        <div class="wifi-icon">
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                        </div>
+                        <div class="battery-icon">
+                            <div class="battery-fill"></div>
+                        </div>
+                        <div class="xmb-time" id="xmb-time">10:00 AM</div>
+                    </div>
+
+                    <div class="xmb-view">
+                        <div class="xmb-categories" id="categories"></div>
+                        <div class="xmb-items" id="items"></div>
+                    </div>
+                </div>
+
+                <div class="btn-grid">
+                    <div></div>
+                    <div class="key" id="btn-triangle" style="color:#8af;" onclick="triangleAction()">△</div>
+                    <div></div>
+                    <div class="key" id="btn-square" style="color:#f8a;" onclick="closePop()">▢</div>
+                    <div></div>
+                    <div class="key" id="btn-circle" style="color:#f8a;" onclick="closePop()">◯</div>
+                    <div></div>
+                    <div class="key" id="btn-cross" style="color:#8f8;" onclick="confirmAction()">✕</div>
+                    <div></div>
+                </div>
+            </div>
+
+            <div class="side face back">
+                <div class="umd-ring">
+                    <div class="umd-ring-light" id="umd-light"></div>
+                    <div class="umd-ring-glow" id="umd-glow"></div>
+                    <img id="psp-logo-back" src="psp-vector-logo.png"
+                        style="width:180px; filter: invert(0.9); cursor:pointer; position:relative; z-index:2;">
+                </div>
+            </div>
+
+            <!-- Stacked shell layers for volumetric 3D body -->
+            <div class="shell-layer"
+                style="transform: translateZ(14.4px); background: linear-gradient(180deg, #2a2a2a 0%, #0e0e0e 50%, #080808 100%);">
+            </div>
+            <div class="shell-layer"
+                style="transform: translateZ(10.8px); background: linear-gradient(180deg, #252525 0%, #0d0d0d 50%, #070707 100%);">
+            </div>
+            <div class="shell-layer"
+                style="transform: translateZ(7.2px); background: linear-gradient(180deg, #222222 0%, #0c0c0c 50%, #060606 100%);">
+            </div>
+            <div class="shell-layer"
+                style="transform: translateZ(3.6px); background: linear-gradient(180deg, #1f1f1f 0%, #0b0b0b 50%, #050505 100%);">
+            </div>
+            <div class="shell-layer"
+                style="transform: translateZ(0px); background: linear-gradient(180deg, #1c1c1c 0%, #0a0a0a 50%, #050505 100%);">
+            </div>
+            <div class="shell-layer"
+                style="transform: translateZ(-3.6px); background: linear-gradient(180deg, #1c1c1c 0%, #0a0a0a 50%, #050505 100%);">
+            </div>
+            <div class="shell-layer"
+                style="transform: translateZ(-7.2px); background: linear-gradient(180deg, #1f1f1f 0%, #0b0b0b 50%, #050505 100%);">
+            </div>
+            <div class="shell-layer"
+                style="transform: translateZ(-10.8px); background: linear-gradient(180deg, #222222 0%, #0c0c0c 50%, #060606 100%);">
+            </div>
+            <div class="shell-layer"
+                style="transform: translateZ(-14.4px); background: linear-gradient(180deg, #252525 0%, #0d0d0d 50%, #070707 100%);">
+            </div>
+            <div class="shell-layer"
+                style="transform: translateZ(-17px); background: linear-gradient(180deg, #2a2a2a 0%, #0e0e0e 50%, #080808 100%);">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const scene = document.getElementById('scene');
+        const gloss = document.getElementById('gloss');
+        let isDragging = false, startX, startY, rotY = -20, rotX = 10;
+
+        document.addEventListener('mousedown', (e) => { isDragging = true; startX = e.pageX; startY = e.pageY; });
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            let dX = (e.pageX - startX);
+            let dY = (e.pageY - startY);
+            rotY += dX * 0.4;
+            rotX -= dY * 0.2;
+            scene.style.transform = `rotateY(${rotY}deg) rotateX(${rotX}deg)`;
+
+            // GLOSS REFLECTION LOGIC
+            gloss.style.backgroundPosition = `${rotY * 2}% ${rotX * 2}%`;
+
+            startX = e.pageX; startY = e.pageY;
+        });
+        document.addEventListener('mouseup', () => isDragging = false);
+
+        const xmbData = [
+            { icon: '⚙️', title: 'Settings', items: ['System Update', 'USB Connection', 'Video Settings', 'Photo Settings', 'System Settings', 'Theme Settings', 'Date & Time Settings', 'Power Save Settings', 'Connected Display Settings', 'Sound Settings', 'Security Settings', 'Network Settings'] },
+            { icon: '🎮', title: 'Game', items: ['Snake', 'Tower Stacker', 'Pinball', 'Click Speed', 'Typing Test', 'Simon Says', 'Reaction Test', 'Flappy Bird', 'Brick Breaker'] },
+            { icon: '🎵', title: 'Music', items: ['In the End - Linkin Park', 'Rap God - Eminem', 'Numb - Linkin Park', 'Hypnotize - System Of A Down', 'HUMBLE. - Kendrick Lamar', 'Without Me - Eminem'] },
+            { icon: '📷', title: 'Camera', items: ['Digital Camera'] },
+            { icon: '🌄', title: 'Images', items: ['Memory Stick™', 'Camera Roll', 'Downloads'] },
+            { icon: '🌐', title: 'Network', items: ['Online Instruction Manuals', 'LocationFree™ Player', 'Skype™', 'Remote Play', 'Internet Radio', 'Internet Browser', 'Internet Search'] }
+        ];
+
+        let catIdx = 0;
+        let itemIdx = new Array(xmbData.length).fill(0);
+        let audioCtx = null;
+        let isBooted = false;
+        let currentStream = null; // To track webcam stream
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        window.addEventListener('load', () => {
+            // If boot sequence is missing or commented out, instantly boot.
+            if (!document.getElementById('sony-boot')) {
+                isBooted = true;
+            }
+        });
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'nav') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.05);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+            } else if (type === 'select') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(600, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+            } else if (type === 'cancel') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+            }
+        }
+
+        function renderXMB() {
+            // Document Title & Time
+            document.getElementById('xmb-title').innerText = xmbData[catIdx].title;
+            const now = new Date();
+            document.getElementById('xmb-time').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            // Render Categories
+            const catContainer = document.getElementById('categories');
+            catContainer.innerHTML = '';
+            xmbData.forEach((c, i) => {
+                let div = document.createElement('div');
+                div.className = `xmb-category ${i === catIdx ? 'active' : ''}`;
+                div.innerText = c.icon;
+                catContainer.appendChild(div);
+            });
+            // Update offset: 50% left margin, then offset active item relative to 60px cell width
+            catContainer.style.transform = `translateX(calc(-30px - ${catIdx * 60}px))`;
+
+            // Render Items
+            const itemsContainer = document.getElementById('items');
+            itemsContainer.innerHTML = '';
+            const activeI = itemIdx[catIdx];
+            xmbData[catIdx].items.forEach((item, i) => {
+                let div = document.createElement('div');
+                const diff = i - activeI; // negative = above, positive = below
+                div.className = `xmb-item ${i === activeI ? 'active' : ''}`;
+                div.innerText = item;
+
+                // Items above active: fade out and shrink smoothly
+                if (diff < 0) {
+                    const absDiff = Math.abs(diff);
+                    const fade = Math.max(0, 0.4 - absDiff * 0.25); // disappear after ~2 items
+                    const scale = Math.max(0.6, 1 - absDiff * 0.15);
+                    div.style.opacity = fade;
+                    div.style.transform = `scale(${scale})`;
+                    div.style.filter = `blur(${Math.min(absDiff * 1.5, 4)}px)`;
+                }
+                // Items below active: stay subtly visible
+                else if (diff > 0) {
+                    const fade = Math.max(0.1, 0.5 - diff * 0.1);
+                    div.style.opacity = fade;
+                }
+
+                itemsContainer.appendChild(div);
+            });
+            // Update offset: Use transform combine with centering
+            itemsContainer.style.transform = `translate(-50%, ${-activeI * 32}px)`;
+        }
+
+        function handleNav(axis, dir) {
+            if (!isBooted) return;
+            initAudio();
+
+            // SNAKE ENGINE INTERCEPT
+            if (window.snakeEngineActive) {
+                if (axis === 'Y' && dir === -1 && window.snakeDir !== 'D') window.snakeNextDir = 'U';
+                if (axis === 'Y' && dir === 1 && window.snakeDir !== 'U') window.snakeNextDir = 'D';
+                if (axis === 'X' && dir === -1 && window.snakeDir !== 'R') window.snakeNextDir = 'L';
+                if (axis === 'X' && dir === 1 && window.snakeDir !== 'L') window.snakeNextDir = 'R';
+                return;
+            }
+
+            // STACKER ENGINE INTERCEPT
+            if (window.stackEngineActive) return; // Ignore d-pad in stacker
+
+            // PINBALL ENGINE INTERCEPT
+            if (window.pinballEngineActive) return; // Ignore d-pad in pinball
+
+            // CLICK ENGINE INTERCEPT
+            if (window.clickEngineActive) return; // Ignore d-pad in click speed
+
+            // TYPING ENGINE INTERCEPT
+            if (window.typingEngineActive) return; // Ignore d-pad in typing
+
+            // SIMON ENGINE INTERCEPT
+            if (window.simonEngineActive) return; // Ignore d-pad in simon
+
+            // REACTION ENGINE INTERCEPT
+            if (window.reactEngineActive) return; // Ignore d-pad in reaction test
+
+            // FLAPPY ENGINE INTERCEPT
+            if (window.flappyEngineActive) return; // Ignore d-pad in flappy
+
+            // BRICK ENGINE INTERCEPT
+            if (window.brickEngineActive) return; // Ignore d-pad in brick breaker
+
+            playSound('nav');
+            if (axis === 'X') {
+                catIdx = Math.max(0, Math.min(xmbData.length - 1, catIdx + dir));
+            } else {
+                const max = xmbData[catIdx].items.length - 1;
+                itemIdx[catIdx] = Math.max(0, Math.min(max, itemIdx[catIdx] + dir));
+            }
+            renderXMB();
+        }
+
+        function confirmAction() {
+            if (!isBooted) return;
+            initAudio();
+
+            // GAME INTERCEPTS
+            if (window.snakeEngineActive) return; // 'S' does nothing in snake
+            if (window.stackEngineActive) {
+                if (window.stackDropBox) window.stackDropBox();
+                return;
+            }
+
+            playSound('select');
+            const itemText = xmbData[catIdx].items[itemIdx[catIdx]];
+
+            if (itemText === 'Digital Camera') {
+                // Open Camera App
+                const cameraFeed = document.getElementById('camera-feed');
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({ video: true })
+                        .then(stream => {
+                            currentStream = stream;
+                            cameraFeed.srcObject = stream;
+                            cameraFeed.style.display = 'block';
+                        })
+                        .catch(err => {
+                            document.getElementById('cap-display').innerText = "CAMERA ERROR: " + err.message;
+                            document.getElementById('popup').style.display = 'flex';
+                        });
+                } else {
+                    document.getElementById('cap-display').innerText = "CAMERA NOT SUPPORTED";
+                    document.getElementById('popup').style.display = 'flex';
+                }
+            } else if (catIdx === 1 && itemText === 'Snake') {
+                // Launch Snake Game
+                document.getElementById('snake-app').style.display = 'flex';
+                initSnakeGame();
+            } else if (catIdx === 1 && itemText === 'Tower Stacker') {
+                // Launch Stacker Game
+                document.getElementById('stack-app').style.display = 'flex';
+                initStackGame();
+            } else if (catIdx === 1 && itemText === 'Pinball') {
+                // Launch Pinball Game
+                document.getElementById('pinball-app').style.display = 'flex';
+                initPinballGame();
+            } else if (catIdx === 1 && itemText === 'Click Speed') {
+                // Launch Click Speed Game
+                document.getElementById('click-app').style.display = 'flex';
+                initClickGame();
+            } else if (catIdx === 1 && itemText === 'Typing Test') {
+                // Launch Typing Test Game
+                document.getElementById('typing-app').style.display = 'flex';
+                initTypingGame();
+            } else if (catIdx === 1 && itemText === 'Simon Says') {
+                // Launch Simon Says Game
+                document.getElementById('simon-app').style.display = 'flex';
+                initSimonGame();
+            } else if (catIdx === 1 && itemText === 'Reaction Test') {
+                // Launch Reaction Test Game
+                document.getElementById('react-app').style.display = 'flex';
+                initReactGame();
+            } else if (catIdx === 1 && itemText === 'Flappy Bird') {
+                // Launch Flappy Bird Game
+                document.getElementById('flappy-app').style.display = 'flex';
+                initFlappyGame();
+            } else if (catIdx === 1 && itemText === 'Brick Breaker') {
+                // Launch Brick Breaker Game
+                document.getElementById('brick-app').style.display = 'flex';
+                initBrickGame();
+            } else if (catIdx === 2) {
+                // Redirect Music to Youtube
+                const parts = itemText.split(' - ');
+                const title = parts[0] || "Unknown Track";
+
+                const trackMap = {
+                    "In the End": "eVTXPUF4Oz4",
+                    "Rap God": "XbGs_qK2PQA",
+                    "Numb": "kXYiU_JCYtU",
+                    "Hypnotize": "kdZozNqfWXE",
+                    "HUMBLE.": "tvTRZJ-4EyI",
+                    "Without Me": "YVkUvmDQ3HY"
+                };
+
+                const ytId = trackMap[title];
+
+                if (ytId) {
+                    window.open(`https://www.youtube.com/watch?v=${ytId}`, '_blank');
+                } else {
+                    document.getElementById('cap-display').innerText = "TRACK NOT FOUND";
+                    document.getElementById('popup').style.display = 'flex';
+                }
+            } else {
+                // Generic Action popup
+                document.getElementById('cap-display').innerText = itemText;
+                document.getElementById('popup').style.display = 'flex';
+            }
+        }
+
+        function triangleAction() {
+            if (!isBooted) return;
+            initAudio();
+
+            if (window.clickEngineActive) {
+                if (window.clickTriangle) window.clickTriangle();
+            }
+        }
+
+        function closePop() {
+            if (!isBooted) return;
+            initAudio(); playSound('cancel');
+
+            // Close generic popup
+            document.getElementById('popup').style.display = 'none';
+
+            // Close Snake Game if running
+            if (document.getElementById('snake-app').style.display === 'flex') {
+                document.getElementById('snake-app').style.display = 'none';
+                if (window.snakeInterval) clearInterval(window.snakeInterval);
+                window.snakeEngineActive = false;
+            }
+
+            // Close Stacker Game if running
+            if (document.getElementById('stack-app').style.display === 'flex') {
+                document.getElementById('stack-app').style.display = 'none';
+                window.stackEngineActive = false;
+                if (window.stackRAF) cancelAnimationFrame(window.stackRAF);
+            }
+
+            // Close Pinball Game if running
+            if (document.getElementById('pinball-app').style.display === 'flex') {
+                document.getElementById('pinball-app').style.display = 'none';
+                window.pinballEngineActive = false;
+                if (window.pinballRAF) cancelAnimationFrame(window.pinballRAF);
+            }
+
+            // Close Click Speed Game if running
+            if (document.getElementById('click-app').style.display === 'flex') {
+                document.getElementById('click-app').style.display = 'none';
+                window.clickEngineActive = false;
+                if (window.clickTimer) clearInterval(window.clickTimer);
+            }
+
+            // Close Typing Test if running
+            if (document.getElementById('typing-app').style.display === 'flex') {
+                document.getElementById('typing-app').style.display = 'none';
+                window.typingEngineActive = false;
+                if (window.typingTimer) clearInterval(window.typingTimer);
+            }
+
+            // Close Simon Says if running
+            if (document.getElementById('simon-app').style.display === 'flex') {
+                document.getElementById('simon-app').style.display = 'none';
+                window.simonEngineActive = false;
+                if (window.simonTimeout) clearTimeout(window.simonTimeout);
+            }
+
+            // Close Reaction Test if running
+            if (document.getElementById('react-app').style.display === 'flex') {
+                document.getElementById('react-app').style.display = 'none';
+                window.reactEngineActive = false;
+                if (window.reactTimeout) clearTimeout(window.reactTimeout);
+            }
+
+            // Close Flappy Bird if running
+            if (document.getElementById('flappy-app').style.display === 'flex') {
+                document.getElementById('flappy-app').style.display = 'none';
+                window.flappyEngineActive = false;
+                if (window.flappyRAF) cancelAnimationFrame(window.flappyRAF);
+            }
+
+            // Close Brick Breaker if running
+            if (document.getElementById('brick-app').style.display === 'flex') {
+                document.getElementById('brick-app').style.display = 'none';
+                window.brickEngineActive = false;
+                if (window.brickRAF) cancelAnimationFrame(window.brickRAF);
+            }
+
+            // Close Camera App if running
+            const cameraFeed = document.getElementById('camera-feed');
+            if (cameraFeed.style.display === 'block') {
+                cameraFeed.style.display = 'none';
+                if (currentStream) {
+                    currentStream.getTracks().forEach(track => track.stop());
+                    currentStream = null;
+                    cameraFeed.srcObject = null;
+                }
+            }
+        }
+
+        // Setup ticking clock
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('xmb-time').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }, 10000);
+
+        // Keyboard visual feedback
+        function triggerBtnVFX(key, state) {
+            let btn = null;
+            if (key === 'ArrowUp') btn = document.getElementById('btn-up');
+            if (key === 'ArrowDown') btn = document.getElementById('btn-down');
+            if (key === 'ArrowLeft') btn = document.getElementById('btn-left');
+            if (key === 'ArrowRight') btn = document.getElementById('btn-right');
+            if (key.toLowerCase() === 's') btn = document.getElementById('btn-cross');
+            if (key.toLowerCase() === 'd') btn = document.getElementById('btn-circle');
+            if (key.toLowerCase() === 'a') btn = document.getElementById('btn-square');
+            if (key.toLowerCase() === 'w') btn = document.getElementById('btn-triangle');
+
+            if (btn) {
+                if (state) btn.classList.add('pressed');
+                else btn.classList.remove('pressed');
+            }
+        }
+
+        document.addEventListener('keyup', (e) => {
+            triggerBtnVFX(e.key, false);
+
+            // PINBALL ENGINE INTERCEPTS (KEY UP)
+            if (window.pinballEngineActive) {
+                if (e.key === 'ArrowLeft') window.pinballFlippers.left.up = false;
+                if (e.key === 'ArrowRight') window.pinballFlippers.right.up = false;
+            }
+
+            // BRICK ENGINE INTERCEPTS (KEY UP)
+            if (window.brickEngineActive) {
+                if (e.key === 'ArrowLeft' && window.brickKeys) window.brickKeys.left = false;
+                if (e.key === 'ArrowRight' && window.brickKeys) window.brickKeys.right = false;
+            }
+        });
+
+        // Keyboard input mapping
+        document.addEventListener('keydown', (e) => {
+            // Need audio context to start on any keydown as well
+            initAudio();
+            triggerBtnVFX(e.key, true);
+
+            // SNAKE ENGINE INTERCEPTS
+            if (window.snakeEngineActive) {
+                if (e.key === 'ArrowUp' && window.snakeDir !== 'D') window.snakeNextDir = 'U';
+                if (e.key === 'ArrowDown' && window.snakeDir !== 'U') window.snakeNextDir = 'D';
+                if (e.key === 'ArrowLeft' && window.snakeDir !== 'R') window.snakeNextDir = 'L';
+                if (e.key === 'ArrowRight' && window.snakeDir !== 'L') window.snakeNextDir = 'R';
+
+                if (e.key.toLowerCase() === 'd' || e.key.toLowerCase() === 'a') closePop();
+                return; // Block default XMB nav
+            }
+
+            // STACKER ENGINE INTERCEPTS
+            if (window.stackEngineActive) {
+                if (e.key.toLowerCase() === 's') {
+                    if (window.stackDropBox) window.stackDropBox();
+                }
+                if (e.key.toLowerCase() === 'd' || e.key.toLowerCase() === 'a') closePop();
+                return; // Block default XMB nav
+            }
+
+            // PINBALL ENGINE INTERCEPTS
+            if (window.pinballEngineActive) {
+                if (e.key === 'ArrowLeft') window.pinballFlippers.left.up = true;
+                if (e.key === 'ArrowRight') window.pinballFlippers.right.up = true;
+                if (e.key.toLowerCase() === 's') {
+                    if (window.pinballLaunch) window.pinballLaunch();
+                }
+                if (e.key.toLowerCase() === 'd' || e.key.toLowerCase() === 'a') closePop();
+                return; // Block default XMB nav
+            }
+
+            // CLICK ENGINE INTERCEPTS
+            if (window.clickEngineActive) {
+                if (e.key.toLowerCase() === 's') {
+                    if (window.clickAction) window.clickAction();
+                }
+                if (e.key.toLowerCase() === 'w') {
+                    triangleAction();
+                }
+                if (e.key.toLowerCase() === 'd' || e.key.toLowerCase() === 'a') closePop();
+                return; // Block default XMB nav
+            }
+
+            // TYPING ENGINE INTERCEPTS
+            if (window.typingEngineActive) {
+                if (e.key === 'Escape') {
+                    closePop(); // Esc mapping to close typing game
+                    return;
+                }
+                if (e.key.toLowerCase() === 'w') { // triangle mapped to w
+                    triangleAction();
+                }
+                if (window.typingKeyPress) window.typingKeyPress(e.key);
+                return; // Block default XMB nav so typing 'w', 'a', 's', 'd' doesn't close it or confirm
+            }
+
+            // SIMON ENGINE INTERCEPTS
+            if (window.simonEngineActive) {
+                if (e.key === 'Escape') {
+                    closePop(); return;
+                }
+                const btnMap = {
+                    'w': 'triangle',
+                    'd': 'circle',
+                    's': 'cross',
+                    'a': 'square'
+                };
+                if (btnMap[e.key.toLowerCase()] && window.simonBtnPress) {
+                    window.simonBtnPress(btnMap[e.key.toLowerCase()]);
+                }
+                return; // Block default XMB nav
+            }
+
+            // REACTION ENGINE INTERCEPTS
+            if (window.reactEngineActive) {
+                if (e.key === 'Escape') {
+                    closePop(); return;
+                }
+                if (e.key.toLowerCase() === 's' && window.reactKeyPress) {
+                    window.reactKeyPress();
+                }
+                return; // Block default XMB nav
+            }
+
+            // FLAPPY ENGINE INTERCEPTS
+            if (window.flappyEngineActive) {
+                if (e.key === 'Escape') {
+                    closePop(); return;
+                }
+                if (e.key.toLowerCase() === 's' && window.flappyAction) {
+                    window.flappyAction();
+                }
+                return; // Block default XMB nav
+            }
+
+            // BRICK ENGINE INTERCEPTS
+            if (window.brickEngineActive) {
+                if (e.key === 'Escape') {
+                    closePop(); return;
+                }
+                if (e.key.toLowerCase() === 's' && window.brickAction) {
+                    window.brickAction();
+                }
+                if (e.key === 'ArrowLeft' && window.brickKeys) window.brickKeys.left = true;
+                if (e.key === 'ArrowRight' && window.brickKeys) window.brickKeys.right = true;
+                return; // Block default XMB nav
+            }
+
+            // D-Pad Mapping (Arrow Keys)
+            if (e.key === 'ArrowUp') handleNav('Y', -1);
+            if (e.key === 'ArrowDown') handleNav('Y', 1);
+            if (e.key === 'ArrowLeft') handleNav('X', -1);
+            if (e.key === 'ArrowRight') handleNav('X', 1);
+
+            // Action Buttons Mapping (WASD)
+            // S maps to X (Confirm)
+            if (e.key.toLowerCase() === 's') confirmAction();
+            // D mapping to O (Cancel/Close), A mapping to Square (Close)
+            if (e.key.toLowerCase() === 'd' || e.key.toLowerCase() === 'a') closePop();
+        });
+
+
+        // Initial Render
+        renderXMB();
+
+        // PSP Logo Back Click Logic
+        document.getElementById('psp-logo-back').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const light = document.getElementById('umd-light');
+            const glow = document.getElementById('umd-glow');
+            if (light.classList.contains('animating') || glow.classList.contains('stay-on')) return;
+
+            // Light Animation
+            light.classList.add('animating');
+
+            // Fade in the stay-on glow smoothly just before the spinning stops
+            setTimeout(() => {
+                glow.classList.add('stay-on');
+            }, 1800);
+
+            // Clean up the animating class after the glow is fully visible
+            setTimeout(() => {
+                light.classList.remove('animating');
+
+                // Keep the glow for 5 seconds
+                setTimeout(() => {
+                    glow.classList.remove('stay-on');
+                }, 5000);
+            }, 3000);
+
+            // Play Boot Sound
+            try {
+                if (typeof initAudio === 'function') initAudio();
+                if (typeof playBootSound === 'function') {
+                    // Slight delay to sync with bright light spinning
+                    setTimeout(playBootSound, 100);
+                } else {
+                    playSound('select');
+                }
+            } catch (err) {
+                console.error("Audio failed:", err);
+            }
+        });
+    </script>
+
+    <!-- 
+       Boot sequence files have been extracted.
+       Uncomment the following line to enable the boot sequence.
+    -->
+    <script src="games.js"></script>
+    <script src="boot.js"></script>
+</body>
+
+</html>l

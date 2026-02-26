@@ -1,0 +1,135 @@
+/* -------------------------------------
+   FEATURE: CLASSIC BOOT SEQUENCE
+   ------------------------------------- */
+.boot-overlay {
+    position: absolute;
+    inset: 0;
+    background: black;
+    z-index: 150;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: screenOn 1.2s forwards;
+    animation-delay: 0.5s;
+}
+
+.boot-line {
+    width: 0;
+    height: 2px;
+    background: white;
+    box-shadow: 0 0 12px white;
+    animation: lineExpand 0.5s forwards;
+}
+
+@keyframes lineExpand {
+    0% {
+        width: 0;
+    }
+
+    100% {
+        width: 100%;
+    }
+}
+
+@keyframes screenOn {
+    0% {
+        height: 2px;
+        opacity: 1;
+    }
+
+    5% {
+        height: 100%;
+        opacity: 1;
+        filter: brightness(3) contrast(1.5);
+        color: transparent;
+    }
+
+    15% {
+        filter: brightness(1) contrast(1);
+        opacity: 1;
+    }
+
+    99% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+        visibility: hidden;
+    }
+}
+
+.sony-boot {
+    position: absolute;
+    inset: 0;
+    background: #000;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    transition: opacity 2s ease-in;
+}
+
+.sony-text {
+    font-size: 14px;
+    letter-spacing: 3px;
+    opacity: 0;
+    animation: sonyFadeInOut 5s forwards;
+    animation-delay: 1.5s;
+}
+
+.ps-logo-boot {
+    position: absolute;
+    width: 60px;
+    opacity: 0;
+    filter: invert(1);
+    animation: pspFadeIn 4s forwards;
+    animation-delay: 6.5s;
+}
+
+@keyframes sonyFadeInOut {
+    0% {
+        opacity: 0;
+        transform: scale(0.98);
+    }
+
+    15% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    85% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(1.02);
+    }
+}
+
+@keyframes pspFadeIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+
+    20% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    80% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(1.1);
+    }
+}
