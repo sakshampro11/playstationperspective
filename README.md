@@ -2,10 +2,7 @@
 
 > Experience the nostalgia of the 2000s handheld king, right in your browser.
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![Build](https://img.shields.io/badge/build-Vanilla_JS-orange)
-![License](https://img.shields.io/badge/license-MIT-green)
-
 ---
 
 ## The problem
@@ -61,25 +58,6 @@ This project is a masterclass in Vanilla Web Development.
 4. **Audio Context**: Uses the Web Audio API to synthesize chords and sound effects in real-time for that authentic resonant chime.
 
 ---
-
-## Setting up (Local)
-
-Simply clone the repository and open the index:
-
-```bash
-git clone https://github.com/xenkzu/playstationperspective.git
-cd playstationperspective
-# Open index.html in your browser
-```
-
-Or use the included scripts if you have Node.js:
-```bash
-npm install
-npm start
-```
-
----
-
 ## Project Structure
 
 We follow a clean, industry-standard organization:
@@ -115,6 +93,3 @@ Everything runs locally on your machine. No data is sent to external servers. Th
 Pull requests are welcome. If you'd like to add a new mini-game or improve the 3D CSS model, feel free to fork and submit a PR.
 
 ---
-
-## License
-MIT © 2026
