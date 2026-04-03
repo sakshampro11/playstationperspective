@@ -1,7 +1,0 @@
-        .battery-icon::after {
-            { icon: '⚙️', title: 'Settings', items: ['System Update', 'USB Connection', 'Video Settings', 'Photo Settings', 'System Settings', 'Theme Settings', 'Date & Time Settings', 'Power Save Settings', 'Connected Display Settings', 'Sound Settings', 'Security Settings', 'Network Settings'] },
-            { icon: '🎮', title: 'Game', items: ['Game Sharing', 'Saved Data Utility', 'Memory Stick™', 'UMD™'] },
-            { icon: '📷', title: 'Photo', items: ['Memory Stick™', 'Digital Camera'] },
-            { icon: '�', title: 'Music', items: ['Memory Stick™', 'SensMe™ channels'] },
-            { icon: '�', title: 'Video', items: ['Memory Stick™', 'UMD™ Video'] },
-            { icon: '🌐', title: 'Network', items: ['Online Instruction Manuals', 'LocationFree™ Player', 'Skype™', 'Remote Play', 'Internet Radio', 'Internet Browser', 'Internet Search'] }
